@@ -1,0 +1,224 @@
+https://learn.microsoft.com/en-us/aspnet/core/security/cors?view=aspnetcore-7.0
+https://learn.microsoft.com/es-es/aspnet/core/security/cors?view=aspnetcore-7.0
+https://stackoverflow.com/questions/31942037/how-to-enable-cors-in-asp-net-core
+
+* Llamar los servicios en el ngOnInit
+* Validar el rederizado del resultado del servicio con un ngIf para no tener errores de valores indefinidos
+* En put se envia toda la informacion
+* En patch solo se envia una parte
+* Para ver errores profundos compilar
+	ng build prod
+	
+Crear un proyecto con angular
+	ng new upds --prefix xj --skip-tests --strict -s
+	- Agregar routing
+	- Seleccionar CSS
+
+Crear la constante url del API en las variables de entorno 
+	environments/enviroment.ts
+
+	// Declaracion
+	export const environment = {
+		production: false,
+		API_URL: 'localhost:8080/api'
+	};
+	
+	// Uso en cualquier componente o servicio
+	import { environment } from 'src/environments/environment';
+	const data = environment.API_URL
+
+Agregar el modulo Http en src/app/app.module
+	import { HttpClientModule } from '@angular/common/http';
+	imports: [ HttpClientModule ]
+	
+Crear las interfaces/model (DTO)
+	- DTO se realizan para enviar informacion
+	- Interface para recibir informacion
+
+	crear un archivo para las interfaces
+		ng g i interfaces/ICategoria
+	
+	// propiedades que se recibira del backend
+	export interface Product {
+		id: number;
+		nombre:string;
+		categoria: string;
+	}
+
+	// propiedades que se envia del backend
+	export interface ProductDTO extends Omit<Product, 'id' | 'categoria'> {
+		categoriaId:number;
+	}
+
+	// algunas propiedades que se envia del backend
+	export interface ProductPartial extends Partial<ProductDTO>{}
+
+Crear un servicio
+	ng g s service/producto
+
+Agregar el HttpClient en los servicios o componentes
+	Inyectar HttpClient en el constructor
+		import { HttpClient } from '@angular/common/http';
+		
+		constructor( private http: HttpClient ){}
+
+Peticiones HTTP utilizando observables
+	findById(id:number): Observable<Post> {
+    return this.http.get<Post>(`${environment.API_URL}/posts/${id}`);
+  }
+
+  findAll(): Observable<Post[]> {
+    return this.http.get<Post[]>(`${environment.API_URL}/posts`);
+  }
+
+Crear un component
+	ng g c components/post
+	
+	Inyectar el servicio en el constructor
+		constructor( private servicio: Servicio ){}
+		
+	Suscribirse al metodo del endpoint
+		this.postService.findById(2)
+    .subscribe( response => {
+      console.log(response)
+    })
+
+Agregar parametros a la url
+	Opcion A
+		this.http.get<>(`url`, {params: {limit, offset}})
+
+	Opcion B
+		import { HttpParams } from '@angular/common/http';
+	
+		let params = new HttpParams();
+		if (limit && offset) {
+			params = params.set('limit', limit);
+			params = params.set('offset', offset);
+		}
+		
+		this.http.get<>(`url`, {params})
+
+Agregar parametros a los headers
+	Opcion A
+		this.http.get<>(`url`, {headers: {Authorization: `Bearer ${token}`}})
+		
+	Opcion B
+		import { HttpHeaders } from '@angular/common/http';
+		
+		const headers = new HttpHeaders();
+		headers.set('Authorization', `Bearer ${token}`)
+		this.http.get<>(`url`, {headers})
+
+Mostrar errores
+ 	Opcion A (service):
+	 	import { catchError } from 'rxjs/operators';
+	 	import { throwError } from 'rxjs';
+	 	import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
+	 	
+		this.http.get<>(`url`, {params})
+			.pipe(
+				catchError((error: HttpErrorResponse) => {
+					if (error.status === HttpStatusCode.NotFound){
+		        return throwError(()=>{
+		          return 'Hola error 404 ' + error.message;
+		        });
+		      }
+
+		      return throwError(()=>{
+		        return 'Hola error ' + error.message;
+		      });
+				})
+			)
+
+	Opcion B (component):
+		.suscribe(data => {
+		
+		}, error => {
+			console.log('error')
+		})
+
+	Capturar error
+		Opcion A:
+			this.postService.update(1)
+		  .subscribe(response => {
+		    console.log(response)
+		  }, error => {
+		    console.log(error, 'desde la consola')
+		  })
+    
+CallBack help
+	// Peticiones HTTP encadenadas o con dependencias
+	import { switchMap } from 'rxjs/operators';
+	
+	this.http.get<>(`url`, {params})
+		.pipe(
+			switchMap(()=> {
+				return this.http.get<Post>(`${environment.API_URL}/posts/${id}`);
+			}),
+      switchMap(()=> {
+				return this.http.get<Post>(`${environment.API_URL}/posts/${id}`);
+			})
+		).suscribe(data => {
+			console.log('')
+		})
+
+	// Peticiones HTTP en paralelo
+		import { zip } from 'rxjs';
+		
+		zip(
+			serviceA,
+			serviceB
+		).subscribe(response => {
+			const a =  response[0];
+			const b = response[1];
+		})
+
+Mutar valores de la peticion
+	this.http.get<>(`url`, {params})
+	.pipe()
+
+Reintentos de una peticion
+	import { retry } from 'rxjs/operators';
+	this.http.get<>(`url`, {params}).pipe(retry(3));
+
+---------------------------------------------------------------------------
+Auth
+	users, auth, token
+	guardar en el localstorage el token
+	servicios Token
+		saveToken, readToken
+		login () {
+			this.http.post<>(`url`)
+				.pipe(
+					tap(response => serviceToken.save(response))
+				)
+		}
+
+Interceptores
+	ng g interceptor interceptors/token --flat
+	
+	intercept(request, next) {
+		request = this.addToken(request);
+		return next.handle(request);
+	}
+	
+	private addToken(request: HttpRequest<unknown>){
+		const token = this.tokenService.getToken();
+		if (token) {
+			const authRequest = request.clone({
+				headers: request.headers.set('Authorization', `Bearer ${token}`)
+			});
+			
+			return authReq;
+		}
+		return request;
+	}
+
+	Registrarlos en el app.module
+		providers: [
+			{provide: HTTP_INTERCEPTORS, useClass: TokenInterceptor, multu:true}		
+		]
+
+
+ * habilitar las peticiones que se van a interceptar
+	 httpContext

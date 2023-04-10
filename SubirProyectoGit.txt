@@ -1,0 +1,13 @@
+Subir por Primer vez mi codigo de proyecto, si esta tiene el archivo Readme
+	git init
+	git add .
+	git commit -m "first commit"
+	git branch -M main
+	git remote add origin https://github.com/XimenaJL28/angular-notes.git
+	git push -u origin main
+
+
+Agregando nuevos archivos
+	git add .
+	git commit -m "agregando nota"
+	git push

@@ -1,0 +1,73 @@
+Scafolding
+  https://learn.microsoft.com/es-es/aspnet/core/fundamentals/tools/dotnet-aspnet-codegenerator?view=aspnetcore-7.0#install-and-update-aspnet-codegenerator
+  dotnet tool install -g dotnet-aspnet-codegenerator
+  dotnet tool update -g dotnet-aspnet-codegenerator
+
+Scafolding model and entity
+  Preparando el entorno
+    https://learn.microsoft.com/es-es/ef/core/cli/dotnet
+    dotnet tool install --global dotnet-ef
+    dotnet tool update --global dotnet-ef
+    
+    Verificar la instalacion
+      dotnet ef
+      
+    Agregar al proyecto especifico
+      dotnet add package Microsoft.EntityFrameworkCore.Design
+      dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+      dotnet add package Microsoft.EntityFrameworkCore.Tools
+    
+  dotnet ef dbcontext scaffold
+    https://learn.microsoft.com/es-es/ef/core/managing-schemas/scaffolding/?tabs=dotnet-core-cli
+
+  Cadena de conexion
+    Server=localhost;Database=AdventureWorksDW2019;User ID=sa;Password=Ximeninga28;TrustServerCertificate=True;
+    o
+    Server=localhost;Database=AdventureWorksDW2019;User ID=sa;Password=Ximeninga28;Trusted_Connection=True;  
+      
+  Generando codigo
+    Opcion A: Todos los esquemas y tablas y se colocan los nuevos archivos en la carpeta Models
+      dotnet ef dbcontext scaffold "Name=XimenaXJ" Microsoft.EntityFrameworkCore.SqlServer -o Models --context-dir Data -c PruebaXJContext
+	dotnet ef dbcontext scaffold "Name=XimenaXJ" Microsoft.EntityFrameworkCore.SqlServer -o ModelsA --context-dir DataA -c PruebaAXJContext --data-annotations
+    
+    Opcion B: Tablas seleccionadas y se crea el contexto en una carpeta independiente con un nombre y un espacio de nombres especificados
+      dotnet ef dbcontext scaffold "Server=localhost;Database=AdventureWorksLT2019;User ID=sa;Password=Ximeninga28;TrustServerCertificate=True;" Microsoft.EntityFrameworkCore.SqlServer --context-dir Data -c DatabaseContext2 -o Models2 -t Product
+      # --context-namespace New.Namespace
+    
+    Generando codigo desde un DbContext
+      dotnet ef dbcontext scaffold "Server=CadenaDeConexion" 
+      Microsoft.EntityFrameworkCore.SqlServer 
+      --context-dir Data -c DatabaseContext 
+      -o Models --data-annotations
+      # --output-dir Models --data-annotations
+    
+    Opcion C: Lee la cadena de conexión del conjunto de configuración del proyecto mediante la herramienta Administrador de secretos
+      dotnet user-secrets set ConnectionStrings:Blogging "Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=Blogging"
+      dotnet ef dbcontext scaffold Name=ConnectionStrings:Blogging Microsoft.EntityFrameworkCore.SqlServer
+    
+    Opcion D: Se omite el scaffolding de un OnConfiguring método. Esto puede ser útil cuando desea configurar DbContext fuera de la clase 
+      dotnet ef dbcontext scaffold "Server=(localdb)\mssqllocaldb;Database=Blogging;User Id=myUsername;Password=myPassword;" `
+      Microsoft.EntityFrameworkCore.SqlServer --no-onconfiguring
+    
+    https://learn.microsoft.com/es-es/aspnet/core/security/authentication/scaffold-identity?view=aspnetcore-7.0&tabs=netcore-cli  
+  
+  Agregar del DbContext en el program.cs luego de builder.Services.AddControllers();
+    builder.Services.AddDbContext<DatabaseContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SchoolContext")));
+  
+  Agregar en appsettings.json la cadena de conexion
+    "ConnectionString": "Server=localhost;Database=AdventureWorksLT2019;User ID=sa;Password=juanvladimir13;TrustServerCertificate=True"
+    
+Scaffolding de un controlador
+  https://learn.microsoft.com/es-es/aspnet/core/tutorials/first-web-api?view=aspnetcore-7.0&tabs=visual-studio-code#scaffold-a-controller
+  
+  Add tu project
+    dotnet add package Microsoft.VisualStudio.Web.CodeGeneration.Design -v 7.0.0
+    dotnet add package Microsoft.EntityFrameworkCore.Design -v 7.0.0
+
+  Crear el controller
+    https://learn.microsoft.com/es-es/aspnet/core/fundamentals/tools/dotnet-aspnet-codegenerator?view=aspnetcore-7.0#controller-options  
+    
+    dotnet-aspnet-codegenerator controller -name TodoItemsController -async -api -m TodoItem -dc TodoContext -outDir Controllers
+    
+    https://learn.microsoft.com/es-es/aspnet/core/web-api/?view=aspnetcore-7.0

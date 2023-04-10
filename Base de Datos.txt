@@ -1,0 +1,379 @@
+MVC 
+  https://learn.microsoft.com/es-es/aspnet/core/mvc/overview?view=aspnetcore-7.0
+
+Entity Framework 6 VS Entity Framework Core
+
+Con EF Core, el acceso a datos se realiza mediante un modelo.
+Un modelo se compone de clases de entidad y un objeto de contexto que representa una sesión con la base de datos
+Este objeto de contexto permite consultar y guardar datos
+
+Métodos de desarrollo de modelos
+  1 Generar un modelo a partir de una base de datos existente. (scafolding)
+  2 Codificar un modelo manualmente para que coincida con la base de datos.
+  3 Una vez creado un modelo, usar Migraciones de EF para crear una base de datos a partir del modelo.
+
+Modelo (Context) utiliza muchas entidades (Clases con atributos de la base de datos)
+
+Instalar EF Core
+  CLI
+    https://learn.microsoft.com/es-es/ef/core/get-started/overview/install#net-core-cli
+  Visual Studio
+    https://learn.microsoft.com/es-es/ef/core/get-started/overview/install#visual-studio-nuget-package-manager-dialog
+  Providers
+    https://learn.microsoft.com/es-es/ef/core/what-is-new/nuget-packages#database-providers
+    https://learn.microsoft.com/es-es/ef/core/providers/?tabs=dotnet-core-cli
+      
+    https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.SqlServer
+    https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Sqlite
+    https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.InMemory
+    Terceros addons
+      https://learn.microsoft.com/es-es/ef/core/what-is-new/nuget-packages#extension-packages
+	  
+  Obtención de las herramientas de Entity Framework Core
+    dotnet tool install --global dotnet-ef
+    dotnet tool update
+    dotnet add package Microsoft.EntityFrameworkCore.Design
+    dotnet add package Microsoft.EntityFrameworkCore.Tools
+    dotnet add package Microsoft.EntityFrameworkCore.Relational
+    
+Origenes de configuracion
+  https://learn.microsoft.com/es-es/aspnet/core/fundamentals/configuration/?view=aspnetcore-7.0
+  https://learn.microsoft.com/es-es/aspnet/core/security/app-secrets#secret-manager
+
+Cadenas de conexion
+  https://learn.microsoft.com/es-es/ef/core/miscellaneous/connection-strings
+  - La cadena de conexión se puede almacenar en appsettings.json
+  - Una variable de entorno
+  - El almacén de secretos de usuario
+  - Otro origen de configuración
+  
+  appsettings.json
+    "ConnectionStrings": {
+      "BloggingDatabase": "Server=(localdb)\\mssqllocaldb;Database=EFGetStarted.ConsoleApp.NewDb;Trusted_Connection=True;"
+    }
+  
+    using Microsoft.Extensions.Configuration;
+    Configuration.GetConnectionString("BloggingDatabase")
+
+DbContext
+  - Los nombres de la propiedad DBSet sean plurales
+  - Es muy importante liberar la memoria del DbContext tras su uso
+  - Un objeto InvalidOperationException generado por código de EF Core puede poner el contexto en un estado irrecuperable.  
+  - DbContext no es seguro para subprocesos 
+  - No comparta contextos entre subprocesos
+  - Asegúrese de esperar todas las llamadas asincrónicas antes de continuar usando la instancia de contexto.
+
+  Inicializacion de DBContext
+    https://learn.microsoft.com/es-es/ef/core/dbcontext-configuration/#dbcontext-in-dependency-injection-for-aspnet-core
+    https://learn.microsoft.com/es-es/ef/core/dbcontext-configuration/#simple-dbcontext-initialization-with-new
+    https://learn.microsoft.com/es-es/ef/core/dbcontext-configuration/#using-a-dbcontext-factory-eg-for-blazor
+    
+    DbContextOptions
+      https://learn.microsoft.com/es-es/ef/core/dbcontext-configuration/#dbcontextoptions
+      El punto inicial de toda la configuración de DbContext es DbContextOptionsBuilder
+        - En AddDbContext y métodos relacionados
+        - En OnConfiguring
+        - Construido explícitamente con new
+      Siempre se llama a OnConfiguring independientemente de cómo se construya el contexto.
+
+      https://learn.microsoft.com/es-es/ef/core/dbcontext-configuration/#configuring-the-database-provider
+      https://learn.microsoft.com/es-es/ef/core/cli/dbcontext-creation?tabs=dotnet-core-cli
+        public void ConfigureServices(IServiceCollection services)
+          => services.AddDbContext<ApplicationDbContext>();
+    
+  Agrupación de DbContext
+    https://learn.microsoft.com/es-es/ef/core/performance/advanced-performance-topics?tabs=with-di%2Cexpression-api-with-constant#dbcontext-pooling
+    
+    builder.Services.AddDbContextPool<WeatherForecastContext>(
+      o => o.UseSqlServer(builder.Configuration.GetConnectionString("WeatherForecastContext")));
+  
+    builder.Services.AddPooledDbContextFactory<WeatherForecastContext>(
+      o => o.UseSqlServer(builder.Configuration.GetConnectionString("WeatherForecastContext")));
+  
+  Formas de agregar DbContext a la aplicacion
+    EF Core se puede agregar a esta configuración mediante AddDbContext en el método ConfigureServices de Startup.cs
+    public void ConfigureServices(IServiceCollection services){
+      services.AddControllers();
+      services.AddDbContext<ApplicationDbContext>(
+          options => options.UseSqlServer("name=ConnectionStrings:DefaultConnection"));
+    }
+    
+    **
+    public class ApplicationDbContext : DbContext{
+      public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+          : base(options){}
+    }
+    
+    public class MyController{
+      private readonly ApplicationDbContext _context;
+      public MyController(ApplicationDbContext context){
+          _context = context;
+      }
+    }
+    **
+
+  public class BloggingContext : DbContext{
+    public DbSet<Blog> Blogs { get; set; }
+    public DbSet<Post> Posts { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder){
+      optionsBuilder.UseSqlServer(
+        @"Server=(localdb)\mssqllocaldb;Database=Blogging;Trusted_Connection=True");
+    }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder){
+      modelBuilder.Entity<Course>().ToTable("Course");
+      modelBuilder.Entity<Enrollment>().ToTable("Enrollment");
+      modelBuilder.Entity<Student>().ToTable("Student");
+    }
+  }
+
+  builder.Services.AddDbContext<SchoolContext>(options =>
+  options.UseSqlServer(builder.Configuration.GetConnectionString("SchoolContext")));
+
+  Seguimiento de las instancias de entidad por el contexto
+    https://learn.microsoft.com/es-es/ef/core/saving/disconnected-entities
+    https://learn.microsoft.com/es-es/ef/core/querying/tracking
+
+Entity
+  https://learn.microsoft.com/es-es/ef/core/modeling/
+  
+  Creación y configuración de un modelo, el modelo se crea con:
+    - Convenciones | https://learn.microsoft.com/es-es/ef/core/modeling/#built-in-conventions
+    - Anotaciones | https://learn.microsoft.com/es-es/ef/core/modeling/#use-data-annotations-to-configure-a-model
+    - Fluent API en OnModelCreating | https://learn.microsoft.com/es-es/ef/core/modeling/#use-fluent-api-to-configure-a-model
+      https://learn.microsoft.com/es-es/dotnet/api/microsoft.entityframeworkcore.dbcontext.onmodelcreating
+    Ambos reemplazarán la configuración que realizan las convenciones
+    - Configuracion de agrupacion https://learn.microsoft.com/es-es/ef/core/modeling/#grouping-configuration
+    
+  Tipos de entidad
+    Inclucion de tipos(entity) en el modelo
+      https://learn.microsoft.com/es-es/ef/core/modeling/entity-types?tabs=data-annotations#including-types-in-the-model
+  
+  Exclusion de tipos(entity) del modelo
+    - Fluent API
+    - Anotaciones
+    https://learn.microsoft.com/es-es/ef/core/modeling/entity-types?tabs=data-annotations#excluding-types-from-the-model
+  
+  Nombre de la tabla
+    Se usa el nombre de la tabla o la propiedad en el DbSet
+    - Fluent API
+    - Anotaciones
+    https://learn.microsoft.com/es-es/ef/core/modeling/entity-types?tabs=data-annotations#table-name
+  
+  Esquema
+    - Fluent API
+    - Anotaciones
+    https://learn.microsoft.com/es-es/ef/core/modeling/entity-types?tabs=data-annotations#table-schema
+    protected override void OnModelCreating(ModelBuilder modelBuilder){
+      modelBuilder.HasDefaultSchema("blogging");
+    }
+  
+  Vistas
+    Los tipos de entidad se pueden asignar a vistas de base de datos mediante fluent API
+    modelBuilder.Entity<Blog>()
+    .ToView("blogsView", schema: "blogging");
+    Utilizar un provider de memoria
+      https://learn.microsoft.com/es-es/ef/core/testing/testing-without-the-database#in-memory-provider
+  
+  Funciones
+    https://learn.microsoft.com/es-es/ef/core/modeling/entity-types?tabs=data-annotations#table-valued-function-mapping
+    Example
+      modelBuilder.Entity<BlogWithMultiplePosts>().HasNoKey().ToFunction("BlogsWithMultiplePosts");
+
+  Tipos de entidad de tipo compartido
+    https://learn.microsoft.com/es-es/ef/core/modeling/entity-types?tabs=data-annotations#shared-type-entity-types
+  
+  Propiedades de entidad
+    https://learn.microsoft.com/es-es/ef/core/modeling/entity-properties?tabs=data-annotations%2Cwithout-nrt
+    https://learn.microsoft.com/es-es/ef/core/modeling/entity-properties?tabs=data-annotations%2Cwithout-nrt#required-and-optional-properties
+    https://learn.microsoft.com/es-es/ef/core/modeling/entity-properties?tabs=data-annotations%2Cwithout-nrt#maximum-length
+      
+  Primary key
+    Una propiedad denominada Id o <type name>Id se configurará como clave
+    https://learn.microsoft.com/es-es/ef/core/modeling/keys?tabs=data-annotations#configuring-a-primary-key
+    - Fluent API
+    - Anotaciones
+    Nombre de primary key
+      https://learn.microsoft.com/es-es/ef/core/modeling/keys?tabs=data-annotations#primary-key-name
+
+  Foreign key relations
+    https://learn.microsoft.com/es-es/ef/core/modeling/keys?tabs=data-annotations#alternate-keys
+
+  Valores generados o por defecto
+    https://learn.microsoft.com/es-es/ef/core/modeling/generated-properties?tabs=data-annotations
+    Valores predeterminados
+      https://learn.microsoft.com/es-es/ef/core/modeling/generated-properties?tabs=data-annotations#default-values
+    Columnas calculadas
+      https://learn.microsoft.com/es-es/ef/core/modeling/generated-properties?tabs=data-annotations#computed-columns
+    
+    Configuracion explicita de generacion de valores
+      https://learn.microsoft.com/es-es/ef/core/modeling/generated-properties?tabs=data-annotations#explicitly-configuring-value-generation
+    
+  Relaciones
+    https://learn.microsoft.com/es-es/ef/core/modeling/relationships
+    Base de datos relacionales
+      https://learn.microsoft.com/es-es/ef/core/modeling/relationships#relationships-in-relational-databases
+    Relaciones en EF Core
+      https://learn.microsoft.com/es-es/ef/core/modeling/relationships#mapping-relationships-in-ef-core
+      - Creacion de las propiedades en las entidades
+      - OnModelCreating método de DbContext
+      one to many https://learn.microsoft.com/es-es/ef/core/modeling/relationships/one-to-many
+      one to one https://learn.microsoft.com/es-es/ef/core/modeling/relationships/one-to-one
+      many to many https://learn.microsoft.com/es-es/ef/core/modeling/relationships/many-to-many
+      
+      https://learn.microsoft.com/es-es/ef/core/modeling/relationships/foreign-and-principal-keys
+      https://learn.microsoft.com/es-es/ef/core/modeling/relationships/navigations
+    
+    Uso de relaciones
+      https://learn.microsoft.com/es-es/ef/core/modeling/relationships#using-relationships
+      
+      Formas de utilizar en una consulta
+        https://learn.microsoft.com/es-es/ef/core/querying/related-data/
+        Diligentemente https://learn.microsoft.com/es-es/ef/core/querying/related-data/eager
+        De forma diferida https://learn.microsoft.com/es-es/ef/core/querying/related-data/lazy
+        Uso explicito https://learn.microsoft.com/es-es/ef/core/querying/related-data/explicit
+
+	Indices y anotaciones
+    https://learn.microsoft.com/es-es/ef/core/modeling/indexes?tabs=data-annotations
+		Indices compuestos
+			https://learn.microsoft.com/es-es/ef/core/modeling/indexes?tabs=data-annotations#composite-index
+		Indices unicos
+			https://learn.microsoft.com/es-es/ef/core/modeling/indexes?tabs=data-annotations#index-uniqueness
+		Criterio de orden
+			https://learn.microsoft.com/es-es/ef/core/modeling/indexes?tabs=data-annotations#index-sort-order
+		Nombre de indice
+			https://learn.microsoft.com/es-es/ef/core/modeling/indexes?tabs=data-annotations#index-name
+		Filtros
+			https://learn.microsoft.com/es-es/ef/core/modeling/indexes?tabs=data-annotations#index-filter
+		Columnas incluidas
+			https://learn.microsoft.com/es-es/ef/core/modeling/indexes?tabs=data-annotations#included-columns
+		Restricciones Check
+			https://learn.microsoft.com/es-es/ef/core/modeling/indexes?tabs=data-annotations#check-constraints
+			https://github.com/efcore/EFCore.CheckConstraints
+	
+  Herencia
+		https://learn.microsoft.com/es-es/ef/core/modeling/inheritance
+
+	Conversiones
+		Las conversiones se pueden configurar en OnModelCreating
+		https://learn.microsoft.com/es-es/ef/core/modeling/value-conversions?tabs=data-annotations
+			
+ 		Conversiones predefinidas
+	 		- Fluent API
+		  - Anotaciones
+ 			https://learn.microsoft.com/es-es/ef/core/modeling/value-conversions?tabs=data-annotations#pre-defined-conversions
+
+	Tipos de entidad sin llaves
+		https://learn.microsoft.com/es-es/ef/core/modeling/keyless-entity-types?tabs=data-annotations
+	
+	Configuracion masiva del modelo
+		https://learn.microsoft.com/es-es/ef/core/modeling/bulk-configuration
+	
+	Modelos dinamicos
+		https://learn.microsoft.com/es-es/ef/core/modeling/dynamic-model
+  
+  Async https://learn.microsoft.com/es-es/ef/core/miscellaneous/async
+    * No intente realizar varias operaciones en paralelo.
+    * Solo se ejecutan de forma asincrónica las instrucciones que hacen que las consultas o los comandos se envíen a la base de datos. Esto incluye ToListAsync, SingleOrDefaultAsync, FirstOrDefaultAsync y SaveChangesAsync. No incluye las instrucciones que solo cambian una IQueryable, como var students = context.Students.Where(s => s.LastName == "Davolio").
+    * Limitar : Student = await _context.Students.Take(10).ToListAsync();
+    
+    https://learn.microsoft.com/es-es/aspnet/core/data/ef-rp/intro?view=aspnetcore-7.0&tabs=visual-studio#asynchronous-ef-methods-in-aspnet-core-web-apps
+    https://learn.microsoft.com/es-es/dotnet/standard/async
+    https://learn.microsoft.com/es-es/dotnet/csharp/programming-guide/concepts/async/
+
+Scafolding
+  https://learn.microsoft.com/es-es/aspnet/core/fundamentals/tools/dotnet-aspnet-codegenerator?view=aspnetcore-7.0#install-and-update-aspnet-codegenerator
+  dotnet tool install -g dotnet-aspnet-codegenerator
+  dotnet tool update -g dotnet-aspnet-codegenerator
+
+Scafolding model and entity
+  Preparando el entorno
+    https://learn.microsoft.com/es-es/ef/core/cli/dotnet
+    dotnet tool install --global dotnet-ef
+    dotnet tool update --global dotnet-ef
+    
+    Verificar la instalacion
+      dotnet ef
+      
+    Agregar al proyecto especifico
+      dotnet add package Microsoft.EntityFrameworkCore.Design
+      dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+      dotnet add package Microsoft.EntityFrameworkCore.Tools
+    
+  dotnet ef dbcontext scaffold
+    https://learn.microsoft.com/es-es/ef/core/managing-schemas/scaffolding/?tabs=dotnet-core-cli
+
+  Cadena de conexion
+    localhost;Database=AdventureWorksLT2019;User ID=sa;Password=juanvladimir13;TrustServerCertificate=True;
+    o
+    localhost;Database=AdventureWorksLT2019;User ID=sa;Password=juanvladimir13;Trusted_Connection=True;  
+      
+  Generando codigo
+    Opcion A: Todos los esquemas y tablas y se colocan los nuevos archivos en la carpeta Models
+      dotnet ef dbcontext scaffold "Server=CadenaDeConexion" 
+      Microsoft.EntityFrameworkCore.SqlServer -o Models 
+      --context-dir Data -c DatabaseContext
+    
+    Opcion B: Tablas seleccionadas y se crea el contexto en una carpeta independiente con un nombre y un espacio de nombres especificados
+      dotnet ef dbcontext scaffold "Server=CadenaDeConexion" 
+      Microsoft.EntityFrameworkCore.SqlServer 
+      --context-dir Data -c DatabaseContext 
+      -o Models -t Blog -t Post
+      # --context-namespace New.Namespace
+    
+    Generando codigo desde un DbContext
+      dotnet ef dbcontext scaffold "Server=CadenaDeConexion" 
+      Microsoft.EntityFrameworkCore.SqlServer 
+      --context-dir Data -c DatabaseContext 
+      -o Models --data-annotations
+      # --output-dir Models --data-annotations
+    
+    Opcion C: Lee la cadena de conexión del conjunto de configuración del proyecto mediante la herramienta Administrador de secretos
+      dotnet user-secrets set ConnectionStrings:Blogging "Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=Blogging"
+      dotnet ef dbcontext scaffold Name=ConnectionStrings:Blogging Microsoft.EntityFrameworkCore.SqlServer
+    
+    Opcion D: Se omite el scaffolding de un OnConfiguring método. Esto puede ser útil cuando desea configurar DbContext fuera de la clase 
+      dotnet ef dbcontext scaffold "Server=(localdb)\mssqllocaldb;Database=Blogging;User Id=myUsername;Password=myPassword;" `
+      Microsoft.EntityFrameworkCore.SqlServer --no-onconfiguring
+    
+    https://learn.microsoft.com/es-es/aspnet/core/security/authentication/scaffold-identity?view=aspnetcore-7.0&tabs=netcore-cli  
+  
+  Agregar del DbContext en el program.cs luego de builder.Services.AddControllers();
+    builder.Services.AddDbContext<DatabaseContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SchoolContext")));
+  
+  Agregar en appsettings.json la cadena de conexion
+    "ConnectionString": "Server=localhost;Database=AdventureWorksLT2019;User ID=sa;Password=juanvladimir13;TrustServerCertificate=True"
+    
+Scaffolding de un controlador
+  https://learn.microsoft.com/es-es/aspnet/core/tutorials/first-web-api?view=aspnetcore-7.0&tabs=visual-studio-code#scaffold-a-controller
+  
+  Add tu project
+    dotnet add package Microsoft.VisualStudio.Web.CodeGeneration.Design -v 7.0.0
+    dotnet add package Microsoft.EntityFrameworkCore.Design -v 7.0.0
+
+  Crear el controller
+    https://learn.microsoft.com/es-es/aspnet/core/fundamentals/tools/dotnet-aspnet-codegenerator?view=aspnetcore-7.0#controller-options  
+    
+    dotnet-aspnet-codegenerator controller -name TodoItemsController 
+    -async -api -m TodoItem -dc TodoContext -outDir Controllers
+    
+    https://learn.microsoft.com/es-es/aspnet/core/web-api/?view=aspnetcore-7.0
+    
+Administracion de base de datos
+	Consultas
+		https://learn.microsoft.com/es-es/ef/core/querying/
+		https://learn.microsoft.com/es-es/dotnet/csharp/programming-guide/concepts/linq/basic-linq-query-operations
+		https://learn.microsoft.com/es-es/dotnet/csharp/programming-guide/concepts/linq/
+  
+	Migraciones
+		https://learn.microsoft.com/es-es/ef/core/managing-schemas/migrations/?tabs=dotnet-core-cli
+
+	Guardar datos
+		https://learn.microsoft.com/es-es/ef/core/saving/
+
+Valores null
+	https://learn.microsoft.com/es-es/ef/core/miscellaneous/nullable-reference-types
+	
+
