@@ -1,0 +1,36 @@
+/estudiante/buscar
+Page de busqueda de estudiante
+	Criterio de busqueda del estudiante CI-Nombre-ApellidoPaterno
+	Tabla de resultados -> [o-] 
+	Carreras
+
+/estudiante/:id
+Page lista de tramites
+	Datos del estudiante
+	Tabla de carreras
+	Tabla de tramites realizados -> Tramite
+
+---------------------------------------------------------------------------
+/tramites/estudianteId/requeridos
+Page documentacion requerida - convalidacion
+	Lista de requisitos [o-] (+) -> Operaciones
+	Tabla de operaciones [o-] -> Operaciones
+	
+/tramites/estudianteId/reprogramaciones/tramiteid
+Page reprogramacion
+	Datos de Funcionario
+	Form de reprogramacion
+
+/tramites/estudianteId/documentos
+Documentos presentados
+		Datos de funcionario
+		Datos de estudiante
+		Vista de imagen de documentos
+
+/tramites/estudianteId/subir-archivos
+Subir archivos
+		Datos de funcionario
+		Upload de imagenes de documentos
+		
+		Listado de imagenes
+

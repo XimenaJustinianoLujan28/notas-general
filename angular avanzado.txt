@@ -1,0 +1,159 @@
+Entorno de desarrollo
+	https://gist.github.com/Klerith/4816679624c1cb528f8e05d902fd7cff
+
+ng new my-app -s -p xj
+
+Cambiando prefix de los componentes (opcional)
+	- angular.json modificar => "prefix": "xj",
+	- src/app/app.componet.ts modificar => selector: 'xj-root',
+	- src/index.html modificar => <xj-root></xj-root>
+
+Agregar src/app/app.module
+	import { HttpClientModule } from '@angular/common/http';
+	imports: [ HttpClientModule ]
+
+Estructura de un proyecto
+	* carpeta principal
+	components, interfaces, pages, services
+	
+	* modulos
+	shared (modulo) menu, footer
+		components, interfaces, pages, services
+	estudiante (modulo)
+		components, interfaces, pages, services
+	tramite		 (modulo)
+		components, interfaces, pages, services
+
+Creacion de modulos con rutas hijas (Route Child)
+	ng g m shared
+	ng g m estudiante --routing
+	ng g m tramite --routing
+	
+	Agregar a cada modulo creado (module_name.module.ts)
+		import { RouterModule } from '@angular/router';
+		import { FormsModule } from '@angular/forms';
+		
+		imports: [
+    	RouterModule,
+    	FormsModule
+  	]
+
+	Dentro de los modulos crear las carpetas
+		components, interfaces, pages, services
+
+Crear componentes
+	ng g c home --skip-tests -s
+	* --skip-tests -s // excluye el archivo *.css y *.spec.ts
+	
+	* nomeclatura para crear un componente Page es
+		ng g c homePage --skip-tests -s 	
+		estudiante: busquedaPage, estudiantePage
+		tramite: archivoPage, documentoPage, reprogramacionPage, requeridoPage
+
+Crear componentes dentro de un modulo
+	ng g c module_name/component_name --skip-tests -s
+	
+	XJ: Los componentes deben ser exportados para ser utilizados en otros modulos
+	XJ: Para utilizar los componentes de un moduloA en un moduloB, hay que importar el moduloA
+
+Personalizar las URL de los modulos
+	src/app/estudiante/estudiante-routing.module.ts
+	src/app/tramite/tramite-routing.module.ts
+
+		const routes: Routes = [
+			{ path: 'home', component: HomeComponent },
+			{ path: 'home/:id', component: HomeComponent },
+		];
+		
+Rutas
+	* Estructura de ruta principal
+	src/app/app-routing.module.ts
+		const routes: Routes = [
+   		{ path: '', component: HomeComponent, pathMatch:'full' },
+			{ path: 'home', component: HomeComponent },
+			{ path: '**', redirectTo: 'home'}
+		];
+	
+	* Lazy loading (carga perezosa)
+	
+	src/app/app-routing.module.ts
+	const routes: Routes = [
+  	{
+  		path: 'estudiante',
+  		loadChildren: ()=> import('./estudiante/estudiante.module').then( m => m.EstudianteModule) 
+  	}
+	];
+	
+	*	Router outlet
+	Secciones de la pagina que cambian
+	<div>menu</div>
+	<div><router-outlet></router-outlet></div>
+
+Servicios
+	* Crear una iterfaces (DTO)
+	ng g i modulo/interfaces/categoria
+
+	* Crear un servicio
+	ng g s modulo/services/producto --skip-tests
+	
+	* Agregar e inyectar en los servicios el HttpClient
+		import { HttpClient } from '@angular/common/http';
+		constructor( private http: HttpClient ){}
+
+	* Crear funciones para consumir el API
+
+Utilizar el servicio en un componente
+	* Inyectar el servicio en el constructor del componente
+	constructor(private estudianteService:EstudianteService) {}
+	
+	* Crear una funcion get para obtener datos del servicio en el HTML
+	get estudiante ():Estudiante{
+    return this.estudianteService.getEstudiante();
+  }
+  
+	* Utilizar la funcion en el template HTML
+	<p>{{ estudiante.ci }}</p>
+	
+Navegacion a las paginas
+	- En el componente del tag HTML utilizar
+  	<a routerLink="/ruta"
+  		 routerLinkActive="active"
+  		 //[routerLinkOptions]="{exact: true}"
+ 		>
+  - Crear una URL compuesta de parametros
+  	<a [routerLink]="['/estudiante',13]">
+  	<a [routerLink]="['/estudiante',13, 'cat', 'catValue', 'XJ', valueXJ]">
+
+Obtener el parametro ID de la URL
+	- Por inject y subscribe en el componente
+	import { ActivatedRoute } from '@angular/router';	
+	constructor(private route: ActivatedRoute) { }
+  
+  ngOnInit(): void {
+  	// por inject
+    const id: number = parseInt(this.route.snapshot.paramMap.get("categoria_id")!, 10);
+
+    // por subscribe
+    this.route.params
+      .subscribe(({id}) =>{ })
+  }
+
+Navegar a URL utilizando funciones
+	- Inject en el Componente
+	import { Router } from '@angular/router';
+	constructor( private router: Router) { }
+	
+	toCategoria(categoria_id: number) {
+    this.router.navigate([`/categoria/${categoria_id}/detail`]);
+  }
+
+Cargar una imagen
+	<img [src]="url" [alt]="title.id" />
+
+Comunicaciones entre componentes
+* event emiters
+* @input
+* referencias #algoReferenciado
+* @output
+
+XJ: Realizar un diagrama de dibujo para comprender mejor las routes y child routes
